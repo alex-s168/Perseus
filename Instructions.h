@@ -160,169 +160,153 @@ typedef enum {
     OP_CLASSDEF_STOP, /* args: [] */
 
 
-    OP_FUNDEF, /* args: [], takes blocks: 1 */
+    OP_FUNDEF_LOCAL, /* args: [function name], takes blocks: 1 */
+    OP_FUNDEF_GLOBAL, /* args: [function name], takes blocks: 1 */
+
+
+    OP_BLOCK_EXEC, /* args: [], takes blocks: 1 */
 } Inst;
 
-int instArgCounts[] = (int[]) {
-    [OP_LOADFILE] = 1,
+// first: amount of arguments
+// second: amount of BLOCK arguments
+// third: amount of stack arguments
+int instArgCounts[][3] = (int[][3]) {
+    /* [inst] = { immediate / program arguments, block arguments, stack arguments } */
 
+    [OP_LOADFILE] = { 1, 0, 0 },
 
-    [OP_PUSH_LOCAL_FRAME] = 0,
-    [OP_POP_LOCAL_FRAME] = 0,
+    [OP_PUSH_LOCAL_FRAME] = { 0, 0, 0 },
+    [OP_POP_LOCAL_FRAME] = { 0, 0, 0 },
 
+    [OP_CALL] = { 1, 0, 0 },
 
-    [OP_CALL] = 1,
+    [OP_ARGSPEC_VAR] = { 1, 0, 0 },
+    [OP_ARGSPEC_IMM] = { 1, 0, 0 },
+    [OP_ARGSPEC_STACK] = { 0, 0, 1 },
+    [OP_ARGSPEC_STACK_N] = { 1, 0, -1 },
 
-    [OP_ARGSPEC_VAR] = 1,
-    [OP_ARGSPEC_IMM] = 1,
-    [OP_ARGSPEC_STACK] = 0,
-    [OP_ARGSPEC_STACK_N] = 1,
+    [OP_ARGGET_VAR] = { 1, 0, 0 },
+    [OP_ARGGET_STACK] = { 0, 0, 1 },
 
-    [OP_ARGGET_VAR] = 1,
-    [OP_ARGGET_STACK] = 0,
+    [OP_STACK_PREALLOC] = { 1, 0, 0 },
 
+    [OP_STACK_REORDER_4] = { 4, 0, 0 },
+    [OP_STACK_REORDER_3] = { 3, 0, 0 },
 
-    [OP_STACK_PREALLOC] = 1,
+    [OP_STACK_SWAP] = { 0, 0, 0 },
 
-    [OP_STACK_REORDER_4] = 4,
-    [OP_STACK_REORDER_3] = 3,
+    [OP_STACK_PUSH_VAR] = { 1, 0, 0 },
+    [OP_STACK_PUSH_IMM] = { 1, 0, 0 },
+    [OP_STACK_PUSH_OBJ_MEMBER_STACK] = { 1, 0, 1 },
+    [OP_STACK_PUSH_OBJ_MEMBER_VAR] = { 2, 0, 0 },
 
-    [OP_STACK_SWAP] = 0,
+    [OP_STACK_DUP] = { 0, 0, 0 },
 
-    [OP_STACK_PUSH_VAR] = 1,
-    [OP_STACK_PUSH_IMM] = 1,
-    [OP_STACK_PUSH_OBJ_MEMBER_STACK] = 1,
-    [OP_STACK_PUSH_OBJ_MEMBER_VAR] = 2,
+    [OP_STACK_POP] = { 0, 0, 0 },
+    [OP_STACK_POP_VAR] = { 1, 0, 0 },
+    [OP_STACK_POP_OBJ_MEMBER_STACK] = { 1, 0, 1 },
+    [OP_STACK_POP_OBJ_MEMBER_VAR] = { 2, 0, 0 },
 
-    [OP_STACK_DUP] = 0,
+    [OP_STACK_PEEK_VAR] = { 1, 0, 0 },
+    [OP_STACK_PEEK_OBJ_MEMBER_STACK] = { 1, 0, 1 },
+    [OP_STACK_PEEK_OBJ_MEMBER_VAR] = { 2, 0, 0 },
 
-    [OP_STACK_POP] = 0,
-    [OP_STACK_POP_VAR] = 1,
-    [OP_STACK_POP_OBJ_MEMBER_STACK] = 1,
-    [OP_STACK_POP_OBJ_MEMBER_VAR] = 2,
+    [OP_COPY_VAR_VAR] = { 2, 0, 0 },
+    [OP_COPY_VAR_OBJ_MEMBER_STACK] = { 2, 0, 1 },
+    [OP_COPY_VAR_OBJ_MEMBER_VAR] = { 3, 0, 0 },
+    [OP_COPY_OBJ_MEMBER_STACK_VAR] = { 2, 0, 0 },
+    [OP_COPY_OBJ_MEMBER_VAR_VAR] = { 3, 0, 0 },
+    [OP_COPY_OBJ_MEMBER_STACK_OBJ_MEMBER_STACK] = { 2, 0, 2 },
+    [OP_COPY_OBJ_MEMBER_STACK_OBJ_MEMBER_VAR] = { 3, 0, 1 },
+    [OP_COPY_OBJ_MEMBER_VAR_OBJ_MEMBER_STACK] = { 3, 0, 1 },
+    [OP_COPY_OBJ_MEMBER_VAR_OBJ_MEMBER_VAR] = { 4, 0, 0 },
 
-    [OP_STACK_PEEK_VAR] = 1,
-    [OP_STACK_PEEK_OBJ_MEMBER_STACK] = 1,
-    [OP_STACK_PEEK_OBJ_MEMBER_VAR] = 2,
+    [OP_VARDEF_LOCAL] = { 1, 0, 0 },
+    [OP_VARDEF_GLOBAL] = { 1, 0, 0 },
 
+    [OP_ARRAY_START] = { 0, 0, 0 },
+    [OP_ARRAY_END] = { 0, 0, 0 },
 
-    [OP_COPY_VAR_VAR] = 2,
-    [OP_COPY_VAR_OBJ_MEMBER_STACK] = 2,
-    [OP_COPY_VAR_OBJ_MEMBER_VAR] = 3,
-    [OP_COPY_OBJ_MEMBER_STACK_VAR] = 2,
-    [OP_COPY_OBJ_MEMBER_VAR_VAR] = 3,
-    [OP_COPY_OBJ_MEMBER_STACK_OBJ_MEMBER_STACK] = 2,
-    [OP_COPY_OBJ_MEMBER_STACK_OBJ_MEMBER_VAR] = 3,
-    [OP_COPY_OBJ_MEMBER_VAR_OBJ_MEMBER_STACK] = 3,
-    [OP_COPY_OBJ_MEMBER_VAR_OBJ_MEMBER_VAR] = 4,
+    [OP_ARRAY_LENGTH_STACK] = { 0, 0, 1 },
+    [OP_ARRAY_LENGTH_VAR] = { 1, 0, 0 },
 
+    [OP_ARRAYCOPY_STACK_STACK_STACK] = { 0, 0, 3 },
 
-    [OP_VARDEF_LOCAL] = 1,
-    [OP_VARDEF_GLOBAL] = 1,
+    [OP_REPEAT_STACK_STACK] = { 0, 0, 2 },
 
+    [OP_ARRAYCLONE_STACK] = { 0, 0, 1 },
+    [OP_ARRAYCLONE_VAR] = { 1, 0, 0 },
 
-    [OP_ARRAY_START] = 0,
-    [OP_ARRAY_END] = 0,
+    [OP_ARRAY_GET_STACK_STACK] = { 0, 0, 2 },
+    [OP_ARRAY_GET_VAR_STACK] = { 1, 0, 1 },
 
-    [OP_ARRAY_LENGTH_STACK] = 0,
-    [OP_ARRAY_LENGTH_VAR] = 1,
+    [OP_ARRAY_SET_STACK_STACK_STACK] = { 0, 0, 3 },
+    [OP_ARRAY_SET_VAR_STACK_STACK] = { 1, 0, 2 },
 
-    [OP_ARRAYCOPY_STACK_STACK_STACK] = 0,
+    [OP_OBJ_CREATE_TO_STACK] = { 1, 0, 0 },
+    [OP_OBJ_CREATE_TO_VAR] = { 2, 0, 0 },
 
-    [OP_REPEAT_STACK_STACK] = 0,
+    [OP_OBJ_MEMBER_VAR_SET_IMM] = { 3, 0, 0 },
+    [OP_OBJ_MEMBER_STACK_SET_IMM] = { 2, 0, 1 },
 
-    [OP_ARRAYCLONE_STACK] = 0,
-    [OP_ARRAYCLONE_VAR] = 1,
+    [OP_OBJ_CLONE_STACK_TO_STACK] = { 0, 0, 1 },
+    [OP_OBJ_CLONE_STACK_TO_VAR] = { 1, 0, 1 },
+    [OP_OBJ_CLONE_VAR_TO_STACK] = { 1, 0, 0 },
+    [OP_OBJ_CLONE_VAR_TO_VAR] = { 2, 0, 0 },
 
-    [OP_ARRAY_GET_STACK_STACK] = 0,
-    [OP_ARRAY_GET_VAR_STACK] = 1,
+    [OP_VAR_SET_IMM] = { 2, 0, 0 },
+    [OP_VAR_REMOVE] = { 1, 0, 0 },
 
-    [OP_ARRAY_SET_STACK_STACK_STACK] = 0,
-    [OP_ARRAY_SET_VAR_STACK_STACK] = 1,
+    [HINT_VAR_UNUSED] = { 1, 0, 0 },
+    [HINT_FUNCTION_MANY_CALLS] = { 1, 0, 0 },
+    [HINT_FUNCTION_MANY_CALLS_T] = { 2, 0, 0 },
 
+    [OP_IF_STACK] = { 0, 1, 0 },
+    [OP_IF_VAR] = { 1, 1, 0 },
 
-    [OP_OBJ_CREATE_TO_STACK] = 1,
-    [OP_OBJ_CREATE_TO_VAR] = 2,
+    [OP_ELSE] = { 0, 1, 0 },
 
-    [OP_OBJ_MEMBER_VAR_SET_IMM] = 3,
-    [OP_OBJ_MEMBER_STACK_SET_IMM] = 2,
+    [OP_ELSE_IF_STACK] = { 0, 1, 0 },
+    [OP_ELSE_IF_VAR] = { 1, 1, 0 },
 
-    [OP_OBJ_CLONE_STACK_TO_STACK] = 0,
-    [OP_OBJ_CLONE_STACK_TO_VAR] = 1,
-    [OP_OBJ_CLONE_VAR_TO_STACK] = 1,
-    [OP_OBJ_CLONE_VAR_TO_VAR] = 2,
+    [OP_SWITCH_STACK] = { 0, 1, 0 },
+    [OP_SWITCH_VAR] = { 1, 1, 0 },
 
+    [OP_CASE_IMMEDIATE] = { 1, 1, 0 },
+    [OP_CASE_VAR] = { 1, 1, 0 },
+    [OP_CASE_STACK] = { 0, 1, 0 },
 
-    [OP_VAR_SET_IMM] = 2,
-    [OP_VAR_REMOVE] = 1,
+    [OP_DEFAULT] = { 0, 1, 0 },
 
+    [OP_LOOP] = { 0, 1, 0 },
 
-    [HINT_VAR_UNUSED] = 1,
-    [HINT_FUNCTION_MANY_CALLS] = 1,
-    [HINT_FUNCTION_MANY_CALLS_T] = 2,
+    [OP_BREAK] = { 0, 0, 0 },
 
+    [OP_CONTINUE] = { 0, 0, 0 },
 
-    [OP_IF_STACK] = 0,
-    [OP_IF_VAR] = 1,
+    [OP_TRY] = { 0, 1, 0 },
+    [OP_CATCH_VAR] = { 1, 1, 0 },
+    [OP_CATCH_STACK] = { 0, 1, 0 },
 
-    [OP_ELSE] = 0,
+    [OP_THROW_STACK] = { 0, 0, 1 },
+    [OP_THROW_VAR] = { 1, 0, 0 },
 
-    [OP_ELSE_IF_STACK] = 0,
-    [OP_ELSE_IF_VAR] = 1,
+    [OP_EXCEPTION_GENERATE_DEFAULT] = { 0, 0, 0 },
+    [OP_EXCEPTION_GENERATE_STACK] = { 0, 0, 1 },
 
+    [OP_CLASSDEF_START_LOCAL] = { 1, 0, 0 },
+    [OP_CLASSDEF_START_GLOBAL] = { 1, 0, 0 },
 
-    [OP_SWITCH_STACK] = 0,
-    [OP_SWITCH_VAR] = 1,
+    [OP_CLASSDEF_USE] = { 1, 0, 0 },
 
-    [OP_CASE_IMMEDIATE] = 1,
-    [OP_CASE_VAR] = 1,
-    [OP_CASE_STACK] = 0,
+    [OP_CLASSDEF_VARIABLE] = { 2, 0, 0 },
+    [OP_CLASSDEF_VARIABLE_DEFAULT] = { 2, 0, 1 },
 
-    [OP_DEFAULT] = 0,
+    [OP_CLASSDEF_STOP] = { 0, 0, 0 },
 
+    [OP_FUNDEF_LOCAL] = { 1, 1, 0 },
+    [OP_FUNDEF_GLOBAL] = { 1, 1, 0 },
 
-    [OP_LOOP] = 0,
-
-    [OP_BREAK] = 0,
-
-    [OP_CONTINUE] = 0,
-
-
-    [OP_INC_STACK] = 0,
-    [OP_INC_VAR] = 1,
-    [OP_INC_OBJ_MEMBER_STACK] = 1,
-    [OP_INC_OBJ_MEMBER_VAR] = 2,
-
-    [OP_DEC_STACK] = 0,
-    [OP_DEC_VAR] = 1,
-    [OP_DEC_OBJ_MEMBER_STACK] = 1,
-    [OP_DEC_OBJ_MEMBER_VAR] = 2,
-
-
-    [OP_TRY] = 0,
-
-    [OP_CATCH_VAR] = 1,
-    [OP_CATCH_STACK] = 0,
-
-    [OP_THROW_STACK] = 0,
-    [OP_THROW_VAR] = 1,
-
-    [OP_EXCEPTION_GENERATE_DEFAULT] = 0,
-    [OP_EXCEPTION_GENERATE_STACK] = 0,
-
-
-    [OP_CLASSDEF_START_LOCAL] = 1,
-    [OP_CLASSDEF_START_GLOBAL] = 1,
-
-    [OP_CLASSDEF_USE] = 1,
-
-    [OP_CLASSDEF_VARIABLE] = 2,
-    [OP_CLASSDEF_VARIABLE_DEFAULT] = 2,
-
-    [OP_CLASSDEF_STOP] = 0,
-
-
-    [OP_FUNDEF] = 0,
+    [OP_BLOCK_EXEC] = { 0, 1, 0 },
 };
-
 #endif

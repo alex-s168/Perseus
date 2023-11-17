@@ -5,5 +5,5 @@ clean:
 
 CFLAGS := -Werror -Wall
 
-perseusTest: main.c
+perseusTest: main.c Runtime.c InstructionStream.c
 	$(CC) $^ -o $@ $(CFLAGS)
